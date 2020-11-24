@@ -1,7 +1,7 @@
 import React from 'react';
 import {
-  SegmentedControlIOS,
-  LayoutAnimation,
+  PermissionsAndroid,
+  ToastAndroid,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -10,23 +10,72 @@ import {
   View,
   TextInput,
   Text,
-  Keyboard,
-  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 
-import LinearGradient from 'react-native-linear-gradient';
 import { BlurView, VibrancyView } from "@react-native-community/blur";
+import Geolocation from '@react-native-community/geolocation';
+
+import LinearGradient from 'react-native-linear-gradient';
+import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+
+const language = [
+  { // Index RU - 0
+    'day_1': 'Понедельник',
+    'day_2': 'Вторник',
+    'day_3': 'Среда',
+    'day_4': 'Четверг',
+    'day_5': 'Пятница',
+    'day_6': 'Суббота',
+    'day_7': 'Воскресенье',
+  },
+  { // Index US - 1
+    'day_1': 'Monday',
+    'day_2': 'Tuesday',
+    'day_3': 'Wednesday',
+    'day_4': 'Thursday',
+    'day_5': 'Friday',
+    'day_6': 'Saturday',
+    'day_7': 'Sunday',
+  }
+]
 
 class App extends React.Component {
 
   constructor(props) {
     super(props);
     this.state = {
-      blurOpacity: false,
+      geoStatus: 0,
+      geoResult: '',
+
+      currentCity: null,
+      currentTemp: null,
+
+      blurOpacity: true,
+
+      dateArr: [],
+      tempArr: [],
+
+      language: 1
     };
   }
 
+  componentDidMount() {
+    this.hasLocationPermission();
+
+    const Data = new Date();
+    var dateArr = [Data.getDay(), 0, 0, 0, 0];
+    for (var i = 1; i <= 4; i++) {
+
+      nextDay = dateArr[i - 1] + 1;
+      if (nextDay > 6) nextDay = 0;
+
+      dateArr[i] = nextDay;
+    }
+  }
+
   render() {
+
     return (
       <LinearGradient colors={['#f6bfaf', '#eac895', '#e0d180']} style={styles.container}>
 
@@ -39,13 +88,18 @@ class App extends React.Component {
           <Text style={[styles.titleFull, styles.mb15]}>whatweather?</Text>
 
           <Text style={[styles.textInfo, styles.mb10]}>Type in your location and we tell you what weather to expect.</Text>
-          <TextInput
-            style={styles.inputCity}
-            placeholder="Your city"
-            placeholderTextColor="#000"
-            onFocus={this.focusInput}
-            onEndEditing={this.focusInput}
-          />
+
+          <View style={{position: 'relative'}}>
+            <TextInput
+              style={styles.inputCity}
+              placeholder="Your city"
+              placeholderTextColor="#000"
+              onFocus={this.focusInput}
+              onEndEditing={this.focusInput}
+              value={this.state.currentCity}
+            />
+            <FontAwesome5 style={{position: 'absolute', right: 15, top: 15, fontSize: 30}} name={'arrow-right'} />
+          </View>
         </View>
 
         <View style={{position: 'relative', flex: 1}}>
@@ -56,16 +110,131 @@ class App extends React.Component {
             reducedTransparencyFallbackColor="white"
           />
 
+          {this.state.currentTemp!==null
+            ?
           <View style={[styles.mt20, styles.mb20, styles.textCenter]}>
-            <Text style={{fontFamily: "Roboto-Black",fontSize: 50}}>25 C</Text>
+            <View style={{flexDirection: 'row', flexWrap: 'wrap'}}>
+              <Text style={{fontFamily: "Roboto-Black",fontSize: 50}}>{this.state.currentTemp}</Text>
+              <FontAwesome5 style={{fontSize: 30}} name={this.state.currentTemp > 15 ? 'temperature-high' : 'temperature-low'} />
+            </View>
           </View>
+            :
+            <></>
+          }
+
+          <View style={[{flex: 1}, styles.plr10]}>
+            {
+              this.state.tempArr.map((item, index) => {
+                if (typeof item !== 'undefined' && item !== null) return (
+                  <View style={{flex: 1, flexDirection: 'row', flexWrap: 'wrap'}}>
+                    <View style={{flex: .7}}>
+                      <Text style={{fontSize: 20}}>{this.currentDay(index)}</Text>
+                    </View>
+                    <View style={{flex: .2}}>
+                      <Text style={{fontSize: 20}}>{item[0].temp}</Text>
+                    </View>
+                    <View style={{flex: .1}}>
+                      <Text style={{fontSize: 20}}><FontAwesome5 style={{fontSize: 30}} name={this.currentIcon(item[0].sky)} /></Text>
+                    </View>
+                  </View>
+                )
+              })
+            }
+          </View>
+
+
         </View>
       </LinearGradient>
     );
   }
 
-  focusInput = () => {
-    // LayoutAnimation.easeInEaseOut();
+  currentDay = (i) => {
+    if (i == 1) return language[this.state.language].day_1;
+    else if (i == 2) return language[this.state.language].day_2;
+    else if (i == 3) return language[this.state.language].day_3;
+    else if (i == 4) return language[this.state.language].day_4;
+    else if (i == 5) return language[this.state.language].day_5;
+    else if (i == 6) return language[this.state.language].day_6;
+    else if (i == 7) return language[this.state.language].day_7;
+  }
+
+  currentIcon = (i) => {
+    if (i == 'Clear') return 'sun';
+    else if (i == 'Clouds') return 'cloud-sun';
+    else return i;
+  }
+
+  hasLocationPermission = async () => {
+    if (Platform.OS === 'ios') return this.getGeopisition();
+
+    const hasPermission = await PermissionsAndroid.check(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+    );
+
+    if (hasPermission) return this.getGeopisition();
+
+    const status = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+
+    if (status === PermissionsAndroid.RESULTS.DENIED) {
+      this.setState({ geoStatus: 1 });
+      ToastAndroid.show('Вы запретели приложению доступ к геопозиции!', ToastAndroid.LONG);
+    }
+    else if (status === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+      this.setState({ geoStatus: 1 });
+      ToastAndroid.show('Вы запретели приложению доступ к геопозиции!', ToastAndroid.LONG);
+    }
+    else if (status === PermissionsAndroid.RESULTS.GRANTED) returnthis.getGeopisition();
+  }
+
+  getGeopisition = () => {
+    Geolocation.getCurrentPosition((position) => {
+      this.setState({ geoStatus: 2 });
+      fetch(
+        'https://maps.googleapis.com/maps/api/geocode/json?latlng='+position.coords.latitude+','+position.coords.longitude+'&result_type=locality&key=AIzaSyCQE_AwReUMflM1VWYNyBvB5t-lUjy2BUw'
+      )
+        .then((response) => response.json())
+        .then((responseData) => {
+          if (responseData['results'].length > 0) this.setState({ currentCity: responseData['results'][0]['address_components'][0]['long_name'] });
+        })
+        .done();
+
+      var tArr = [];
+      fetch(
+        'http://api.openweathermap.org/data/2.5/forecast?lat='+position.coords.latitude+'&lon='+position.coords.longitude+'&appid=55d1987842a2257681ddf2308851537e'
+      )
+        .then((response) => response.json())
+        .then((responseData) => {
+          responseData.list.map((item, index) => {
+            let d = new Date(item.dt * 1000);
+            let temp = Math.round(item.main.temp - 273);
+
+            if (index == 0) this.setState({ currentTemp: temp });
+
+            let day_id = d.getDay();
+            if (d.getDay() === 0) day_id = 7;
+
+            tArr[day_id] = [{
+              'temp': temp,
+              'sky': item.weather[0].main
+            }];
+          })
+
+          this.setState({ tempArr: tArr });
+        })
+        .done();
+
+        this.focusInput();
+     },
+     (error) => {
+       this.setState({ geoStatus: 1, geoResult: error.code+': '+error.message});
+       console.warn('[GEO] Geolocation error! '+JSON.stringify(error.message));
+       console.log(error);
+     },
+     { enableHighAccuracy: Platform.OS=='ios'?false:true, timeout: Platform.OS=='ios'?0:20000, maximumAge: Platform.OS=='ios'?0:30000, forceRequestLocation: Platform.OS=='ios'?false:true }
+   );
+  }
+
+  focusInput = (value) => {
     this.setState({ blurOpacity: !this.state.blurOpacity })
   }
 }
