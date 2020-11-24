@@ -50,6 +50,7 @@ class App extends React.Component {
 
       currentCity: null,
       currentTemp: null,
+      currencySky: null,
 
       blurOpacity: true,
 
@@ -75,7 +76,6 @@ class App extends React.Component {
   }
 
   render() {
-
     return (
       <LinearGradient colors={['#f6bfaf', '#eac895', '#e0d180']} style={styles.container}>
 
@@ -96,7 +96,7 @@ class App extends React.Component {
               placeholderTextColor="#000"
               onFocus={this.focusInput}
               onEndEditing={this.focusInput}
-              value={this.state.currentCity}
+              defaultValue={this.state.currentCity}
             />
             <FontAwesome5 style={{position: 'absolute', right: 15, top: 15, fontSize: 30}} name={'arrow-right'} />
           </View>
@@ -114,7 +114,10 @@ class App extends React.Component {
             ?
           <View style={[styles.mt20, styles.mb20, styles.textCenter]}>
             <View style={{flexDirection: 'row', flexWrap: 'wrap'}}>
-              <Text style={{fontFamily: "Roboto-Black",fontSize: 50}}>{this.state.currentTemp}</Text>
+              <View style={{justifyContent: 'center', marginRight: 10}}>
+                <FontAwesome5 style={{fontSize: 30}} name={this.currentIcon(this.state.currencySky)} solid />
+              </View>
+              <Text style={{fontFamily: "Roboto-Black", fontSize: 60}}>{this.state.currentTemp}</Text>
               <FontAwesome5 style={{fontSize: 30}} name={this.state.currentTemp > 15 ? 'temperature-high' : 'temperature-low'} />
             </View>
           </View>
@@ -134,7 +137,7 @@ class App extends React.Component {
                       <Text style={{fontSize: 20}}>{item[0].temp}</Text>
                     </View>
                     <View style={{flex: .1}}>
-                      <Text style={{fontSize: 20}}><FontAwesome5 style={{fontSize: 30}} name={this.currentIcon(item[0].sky)} /></Text>
+                      <FontAwesome5 style={{fontSize: 30}} name={this.currentIcon(item[0].sky)} solid />
                     </View>
                   </View>
                 )
@@ -207,15 +210,16 @@ class App extends React.Component {
           responseData.list.map((item, index) => {
             let d = new Date(item.dt * 1000);
             let temp = Math.round(item.main.temp - 273);
+            let sky = item.weather[0].main;
 
-            if (index == 0) this.setState({ currentTemp: temp });
+            if (index == 0) this.setState({ currentTemp: temp, currencySky: sky });
 
             let day_id = d.getDay();
             if (d.getDay() === 0) day_id = 7;
 
             tArr[day_id] = [{
               'temp': temp,
-              'sky': item.weather[0].main
+              'sky': sky
             }];
           })
 
@@ -229,6 +233,8 @@ class App extends React.Component {
        this.setState({ geoStatus: 1, geoResult: error.code+': '+error.message});
        console.warn('[GEO] Geolocation error! '+JSON.stringify(error.message));
        console.log(error);
+
+       this.focusInput();
      },
      { enableHighAccuracy: Platform.OS=='ios'?false:true, timeout: Platform.OS=='ios'?0:20000, maximumAge: Platform.OS=='ios'?0:30000, forceRequestLocation: Platform.OS=='ios'?false:true }
    );
