@@ -1,6 +1,8 @@
 import React from 'react';
 import {
   PermissionsAndroid,
+  LayoutAnimation,
+  TouchableOpacity,
   ToastAndroid,
   SafeAreaView,
   StatusBar,
@@ -11,6 +13,9 @@ import {
   TextInput,
   Text,
   Platform,
+  Switch,
+  Keyboard,
+  Alert,
 } from 'react-native';
 
 import { BlurView, VibrancyView } from "@react-native-community/blur";
@@ -28,6 +33,10 @@ const language = [
     'day_5': 'Пятница',
     'day_6': 'Суббота',
     'day_7': 'Воскресенье',
+    'info': 'Введите свое местоположение, и мы сообщим Вам, какую погоду стоит ожидать.',
+    'app_name': 'Какая погода?',
+    'placeholder': 'Ваш город',
+    'error_limit_weather': 'В настоящий момент сервер погоды не доустпен, лимит!'
   },
   { // Index US - 1
     'day_1': 'Monday',
@@ -37,8 +46,15 @@ const language = [
     'day_5': 'Friday',
     'day_6': 'Saturday',
     'day_7': 'Sunday',
+    'info': 'Type in your location and we tell you what weather to expect.',
+    'app_name': 'whatweather',
+    'placeholder': 'Your city',
+    'error_limit_weather': 'The weather server is currently unavailable, limit!'
   }
 ]
+
+const API_KEY_WEATHER = '66beb59157e26efaafe714eba5e57a11'; // Ключ https://openweathermap.org/
+const API_KEY_GOOGLE = 'AIzaSyCQE_AwReUMflM1VWYNyBvB5t-lUjy2BUw'; // Ключ https://google.com/
 
 class App extends React.Component {
 
@@ -57,12 +73,15 @@ class App extends React.Component {
       dateArr: [],
       tempArr: [],
 
-      language: 1
+      language: 1,
+      isEnabled: 0,
+
+      backgroundColor: ['#f6bfaf', '#eac895', '#e0d180']
     };
   }
 
-  componentDidMount() {
-    this.hasLocationPermission();
+  async componentDidMount() {
+    await this.hasLocationPermission();
 
     const Data = new Date();
     var dateArr = [Data.getDay(), 0, 0, 0, 0];
@@ -77,32 +96,56 @@ class App extends React.Component {
 
   render() {
     return (
-      <LinearGradient colors={['#f6bfaf', '#eac895', '#e0d180']} style={styles.container}>
+      <LinearGradient colors={this.state.backgroundColor} style={styles.container}>
 
         <View style={[styles.mb10, styles.plr10]}>
-          <View style={[styles.logo, styles.mb5]}>
-            <Text style={[styles.titleMini, {}]}>W</Text>
-            <Text style={[styles.titleMini, {position: 'relative', left: -5}]}>W</Text>
+
+          <View style={styles.flexRow}>
+            <View style={[styles.flexRow, {width: '70%'}]}>
+              <Text style={[styles.titleMini, {}]}>W</Text>
+              <Text style={[styles.titleMini, {position: 'relative', left: -5}]}>W</Text>
+            </View>
+            <View style={[{width: '30%', justifyContent: 'center'}, styles.flexRow]}>
+              <View style={{justifyContent: 'center', paddingRight: 5}}>
+                <Text style={{fontFamily: 'Roboto-Bold', textAlign: 'right'}}>US</Text>
+              </View>
+              <Switch
+                trackColor={{ false: "#000", true: "#000" }}
+                thumbColor={this.state.currentTemp>15?"#f6bfaf":"#b3f4d5"}
+                ios_backgroundColor="#000"
+                onValueChange={this.toggleSwitch}
+                value={this.state.isEnabled}
+              />
+              <View style={{justifyContent: 'center', paddingLeft: 5}}>
+                <Text style={{fontFamily: 'Roboto-Bold', textAlign: 'right'}}>RU</Text>
+              </View>
+            </View>
           </View>
 
-          <Text style={[styles.titleFull, styles.mb15]}>whatweather?</Text>
+          <Text style={[styles.titleFull, styles.mb15]}>{language[this.state.language].app_name}</Text>
 
-          <Text style={[styles.textInfo, styles.mb10]}>Type in your location and we tell you what weather to expect.</Text>
+          <Text style={[styles.textInfo, styles.mb10]}>{language[this.state.language].info}</Text>
 
           <View style={{position: 'relative'}}>
             <TextInput
               style={styles.inputCity}
-              placeholder="Your city"
+              placeholder={language[this.state.language].placeholder}
               placeholderTextColor="#000"
               onFocus={this.focusInput}
-              onEndEditing={this.focusInput}
+              onEndEditing={this.unFocusInput}
               defaultValue={this.state.currentCity}
+              onChangeText={(text) => {
+                this.setState({ currentCity: text });
+              }}
+              value={this.state.currentCity}
             />
-            <FontAwesome5 style={{position: 'absolute', right: 15, top: 15, fontSize: 30}} name={'arrow-right'} />
+            <TouchableOpacity onPress={() => this.updateCity() } style={{position: 'absolute', right: 15, top: 15}}>
+              <FontAwesome5 style={{fontSize: 30}} name={'arrow-right'} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={{position: 'relative', flex: 1}}>
+        <View style={{flex: 1, position: 'relative'}}>
           <BlurView
             style={[styles.absolute, { opacity: this.state.blurOpacity==true?1:0 }]}
             blurType="light"
@@ -129,14 +172,14 @@ class App extends React.Component {
             {
               this.state.tempArr.map((item, index) => {
                 if (typeof item !== 'undefined' && item !== null) return (
-                  <View style={{flex: 1, flexDirection: 'row', flexWrap: 'wrap'}}>
-                    <View style={{flex: .7}}>
+                  <View key={index} style={{flex: 1, flexDirection: 'row', flexWrap: 'wrap'}}>
+                    <View style={{flex: .65}}>
                       <Text style={{fontSize: 20}}>{this.currentDay(index)}</Text>
                     </View>
                     <View style={{flex: .2}}>
                       <Text style={{fontSize: 20}}>{item[0].temp}</Text>
                     </View>
-                    <View style={{flex: .1}}>
+                    <View style={{flex: .15}}>
                       <FontAwesome5 style={{fontSize: 30}} name={this.currentIcon(item[0].sky)} solid />
                     </View>
                   </View>
@@ -149,6 +192,11 @@ class App extends React.Component {
         </View>
       </LinearGradient>
     );
+  }
+
+  toggleSwitch = () => {
+    LayoutAnimation.easeInEaseOut();
+    this.setState({ language: this.state.language==0?1:0, isEnabled: !this.state.isEnabled });
   }
 
   currentDay = (i) => {
@@ -164,7 +212,10 @@ class App extends React.Component {
   currentIcon = (i) => {
     if (i == 'Clear') return 'sun';
     else if (i == 'Clouds') return 'cloud-sun';
-    else return i;
+    else if (i == 'Rain') return 'cloud-rain';
+    else if (i == 'Snow') return 'snowflake';
+    else if (i == 'Drizzle') return 'cloud-showers-heavy';
+    else i;
   }
 
   hasLocationPermission = async () => {
@@ -189,59 +240,85 @@ class App extends React.Component {
     else if (status === PermissionsAndroid.RESULTS.GRANTED) returnthis.getGeopisition();
   }
 
+  updateCity = async () => {
+    Keyboard.dismiss();
+    fetch(
+      'https://maps.googleapis.com/maps/api/geocode/json?address='+this.state.currentCity+'&key=AIzaSyCQE_AwReUMflM1VWYNyBvB5t-lUjy2BUw'
+    )
+      .then((response) => response.json())
+      .then((responseData) => {
+          if (responseData['results'].length > 0) {
+            this.getWeather(responseData['results'][0]['geometry']['location']['lat'], responseData['results'][0]['geometry']['location']['lng']);
+          }
+      })
+      .done();
+  }
+
   getGeopisition = () => {
-    Geolocation.getCurrentPosition((position) => {
-      this.setState({ geoStatus: 2 });
-      fetch(
-        'https://maps.googleapis.com/maps/api/geocode/json?latlng='+position.coords.latitude+','+position.coords.longitude+'&result_type=locality&key=AIzaSyCQE_AwReUMflM1VWYNyBvB5t-lUjy2BUw'
-      )
-        .then((response) => response.json())
-        .then((responseData) => {
-          if (responseData['results'].length > 0) this.setState({ currentCity: responseData['results'][0]['address_components'][0]['long_name'] });
+    Geolocation.getCurrentPosition(
+      async (position) => {
+        let lat = position.coords.latitude;
+        let lng = position.coords.longitude;
+        await this.getCity(lat, lng);
+        this.getWeather(lat, lng);
+      },
+      (error) => {
+        setTimeout(() => { this.getGeopisition() }, 1000);
+      },
+    );
+  }
+
+  getCity = (lat, lng) => {
+    fetch(
+      'https://maps.googleapis.com/maps/api/geocode/json?latlng='+lat+','+lng+'&result_type=locality&key='+API_KEY_GOOGLE
+    )
+      .then((response) => response.json())
+      .then((responseData) => {
+        if (responseData['results'].length > 0) this.setState({ currentCity: responseData['results'][0]['address_components'][0]['long_name'] });
+      })
+      .done();
+  }
+
+  getWeather = (lat, lng) => {
+    var tArr = [];
+    fetch(
+      'http://api.openweathermap.org/data/2.5/forecast?lat='+lat+'&lon='+lng+'&appid='+API_KEY_WEATHER
+    )
+      .then((response) => response.json())
+      .then((responseData) => {
+        if (responseData.cod == 429) return Alert.alert('Weather', language[this.state.language].error_limit_weather);
+        if (typeof responseData.list == 'undefined') return Alert.alert('Weather', 'Ошибка загрузки погоды, попробуйте чуть позже...');
+        responseData.list.map((item, index) => {
+          let d = new Date(item.dt * 1000);
+          let temp = Math.round(item.main.temp - 273);
+          let sky = item.weather[0].main;
+
+          if (index == 0) {
+            LayoutAnimation.easeInEaseOut();
+            this.setState({ currentTemp: temp, currencySky: sky, backgroundColor: temp>15?['#f6bfaf', '#eac895', '#e0d180']:['#b3f4d5', '#c8e3aa', '#dfd181'] });
+          }
+
+          let day_id = d.getDay();
+          if (d.getDay() === 0) day_id = 7;
+
+          tArr[day_id] = [{
+            'temp': temp,
+            'sky': sky
+          }];
         })
-        .done();
 
-      var tArr = [];
-      fetch(
-        'http://api.openweathermap.org/data/2.5/forecast?lat='+position.coords.latitude+'&lon='+position.coords.longitude+'&appid=55d1987842a2257681ddf2308851537e'
-      )
-        .then((response) => response.json())
-        .then((responseData) => {
-          responseData.list.map((item, index) => {
-            let d = new Date(item.dt * 1000);
-            let temp = Math.round(item.main.temp - 273);
-            let sky = item.weather[0].main;
+        this.setState({ tempArr: tArr });
 
-            if (index == 0) this.setState({ currentTemp: temp, currencySky: sky });
-
-            let day_id = d.getDay();
-            if (d.getDay() === 0) day_id = 7;
-
-            tArr[day_id] = [{
-              'temp': temp,
-              'sky': sky
-            }];
-          })
-
-          this.setState({ tempArr: tArr });
-        })
-        .done();
-
-        this.focusInput();
-     },
-     (error) => {
-       this.setState({ geoStatus: 1, geoResult: error.code+': '+error.message});
-       console.warn('[GEO] Geolocation error! '+JSON.stringify(error.message));
-       console.log(error);
-
-       this.focusInput();
-     },
-     { enableHighAccuracy: Platform.OS=='ios'?false:true, timeout: Platform.OS=='ios'?0:20000, maximumAge: Platform.OS=='ios'?0:30000, forceRequestLocation: Platform.OS=='ios'?false:true }
-   );
+        this.unFocusInput();
+      })
+      .done();
   }
 
   focusInput = (value) => {
-    this.setState({ blurOpacity: !this.state.blurOpacity })
+    this.setState({ blurOpacity: true })
+  }
+  unFocusInput = (value) => {
+    this.setState({ blurOpacity: false })
   }
 }
 
@@ -250,8 +327,8 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 50
   },
-  logo: {
-    flexDirection: 'row', flexWrap: 'wrap'
+  flexRow: {
+    flexDirection: 'row'
   },
   titleMini: {
     fontFamily: "Roboto-Black",
