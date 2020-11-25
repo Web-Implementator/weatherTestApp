@@ -1,2 +1,8 @@
 # weatherTestApp
- Test the weather forecast application
+ Прогнос погоды (test the weather forecast application)
+
+1) Автоматическое опредление геопозиции 
+2) Ручное изменение города
+3) Мультиязычность
+4) Динамические иконки
+5) Динамический фон в зависимости от температуры
