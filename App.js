@@ -36,7 +36,8 @@ const language = [
     'info': 'Введите свое местоположение, и мы сообщим Вам, какую погоду стоит ожидать.',
     'app_name': 'Какая погода?',
     'placeholder': 'Ваш город',
-    'error_limit_weather': 'В настоящий момент сервер погоды не доустпен, лимит!'
+    'error_limit_weather': 'В настоящий момент сервер погоды не доустпен, лимит!',
+    'error_current_city_empty': 'Для начала укажите Ваш город!'
   },
   { // Index US - 1
     'day_1': 'Monday',
@@ -49,7 +50,8 @@ const language = [
     'info': 'Type in your location and we tell you what weather to expect.',
     'app_name': 'whatweather',
     'placeholder': 'Your city',
-    'error_limit_weather': 'The weather server is currently unavailable, limit!'
+    'error_limit_weather': 'The weather server is currently unavailable, limit!',
+    'error_current_city_empty': 'First enter Your city!'
   }
 ]
 
@@ -126,13 +128,15 @@ class App extends React.Component {
 
           <Text style={[styles.textInfo, styles.mb10]}>{language[this.state.language].info}</Text>
 
-          <View style={{position: 'relative'}}>
+          <View style={{position: 'relative', zIndex: 0}}>
             <TextInput
-              style={styles.inputCity}
+              style={[styles.inputCity, {width: Platform.OS=='ios'?'100%':'85%'}]}
               placeholder={language[this.state.language].placeholder}
               placeholderTextColor="#000"
               onFocus={this.focusInput}
-              onEndEditing={this.unFocusInput}
+              onEndEditing={() => {
+                this.updateCity();
+              }}
               defaultValue={this.state.currentCity}
               onChangeText={(text) => {
                 this.setState({ currentCity: text });
@@ -224,7 +228,7 @@ class App extends React.Component {
     const hasPermission = await PermissionsAndroid.check(
       PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
     );
-
+    console.warn(hasPermission);
     if (hasPermission) return this.getGeopisition();
 
     const status = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
@@ -241,6 +245,7 @@ class App extends React.Component {
   }
 
   updateCity = async () => {
+    if (this.state.currentCity === null) return Alert.alert('Weather', language[this.state.language].error_current_city_empty);
     Keyboard.dismiss();
     fetch(
       'https://maps.googleapis.com/maps/api/geocode/json?address='+this.state.currentCity+'&key=AIzaSyCQE_AwReUMflM1VWYNyBvB5t-lUjy2BUw'
@@ -255,16 +260,20 @@ class App extends React.Component {
   }
 
   getGeopisition = () => {
+    console.warn('get');
     Geolocation.getCurrentPosition(
       async (position) => {
+        console.warn(position);
         let lat = position.coords.latitude;
         let lng = position.coords.longitude;
         await this.getCity(lat, lng);
         this.getWeather(lat, lng);
       },
       (error) => {
+        console.warn('error geo!');
         setTimeout(() => { this.getGeopisition() }, 1000);
       },
+      { enableHighAccuracy: false, timeout: Platform.OS=='ios'?0:15000, maximumAge: Platform.OS=='ios'?0:3600000 }
     );
   }
 
