@@ -58,6 +58,8 @@ const language = [
 const API_KEY_WEATHER = '66beb59157e26efaafe714eba5e57a11'; // Ключ https://openweathermap.org/
 const API_KEY_GOOGLE = 'AIzaSyCQE_AwReUMflM1VWYNyBvB5t-lUjy2BUw'; // Ключ https://google.com/
 
+var timer = 0;
+
 class App extends React.Component {
 
   constructor(props) {
@@ -260,7 +262,6 @@ class App extends React.Component {
   }
 
   getGeopisition = () => {
-    console.warn('get');
     Geolocation.getCurrentPosition(
       async (position) => {
         console.warn(position);
@@ -271,7 +272,7 @@ class App extends React.Component {
       },
       (error) => {
         console.warn('error geo!');
-        setTimeout(() => { this.getGeopisition() }, 1000);
+        if (timer < 5) setTimeout(() => { this.getGeopisition(); timer++; }, 3000);
       },
       { enableHighAccuracy: false, timeout: Platform.OS=='ios'?0:15000, maximumAge: Platform.OS=='ios'?0:3600000 }
     );
