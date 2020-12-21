@@ -115,7 +115,7 @@ class App extends React.Component {
               </View>
               <Switch
                 trackColor={{ false: "#000", true: "#000" }}
-                thumbColor={this.state.currentTemp>15?"#f6bfaf":"#b3f4d5"}
+                thumbColor={this.state.currentTemp>=15?"#f6bfaf":"#b3f4d5"}
                 ios_backgroundColor="#000"
                 onValueChange={this.toggleSwitch}
                 value={this.state.isEnabled}
@@ -167,7 +167,7 @@ class App extends React.Component {
                 <FontAwesome5 style={{fontSize: 30}} name={this.currentIcon(this.state.currencySky)} solid />
               </View>
               <Text style={{fontFamily: "Roboto-Black", fontSize: 60}}>{this.state.currentTemp}</Text>
-              <FontAwesome5 style={{fontSize: 30}} name={this.state.currentTemp > 15 ? 'temperature-high' : 'temperature-low'} />
+              <FontAwesome5 style={{fontSize: 30}} name={this.state.currentTemp >= 15 ? 'temperature-high' : 'temperature-low'} />
             </View>
           </View>
             :
@@ -305,7 +305,7 @@ class App extends React.Component {
 
           if (index == 0) {
             LayoutAnimation.easeInEaseOut();
-            this.setState({ currentTemp: temp, currencySky: sky, backgroundColor: temp>15?['#f6bfaf', '#eac895', '#e0d180']:['#b3f4d5', '#c8e3aa', '#dfd181'] });
+            this.setState({ currentTemp: temp, currencySky: sky, backgroundColor: temp>=15?['#f6bfaf', '#eac895', '#e0d180']:['#b3f4d5', '#c8e3aa', '#dfd181'] });
           }
 
           let day_id = d.getDay();
